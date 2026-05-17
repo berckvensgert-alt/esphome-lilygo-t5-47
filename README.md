@@ -12,7 +12,7 @@
 ## Requirements
 
 - ESPHome 2024.1.0 or later
-- LilyGo T5 4.7" (original ESP32 version with ED047TC1 display)
+- LilyGo T5 4.7"  s3
 
 ## Installation
 
@@ -20,7 +20,7 @@ Add the following to your ESPHome configuration:
 
 ```yaml
 external_components:
-  - source: github://sujal/esphome-lilygo-t5-47
+  - source: [github://berckvensgert-alt/esphome-lilygo-t5-47]
     components: [lilygo_t5_47_display, lilygo_t5_47_battery]
 ```
 
