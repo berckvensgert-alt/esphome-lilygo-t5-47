@@ -78,7 +78,7 @@ esphome:
   board: esp32dev
 
 external_components:
-  - source: github://sujal/esphome-lilygo-t5-47
+  - source: github://berckvensgert-alt/esphome-lilygo-t5-47
     components: [lilygo_t5_47_display, lilygo_t5_47_battery]
 
 wifi:
