@@ -30,7 +30,7 @@ void LilygoT547Display::setup() {
            this->landscape_ ? "true" : "false",
            this->temperature_);
 
-  epd_init(&epd_board_lilygo_t5_47, &ED047TC1, EPD_OPTIONS_DEFAULT);
+  epd_init(&epd_board_v7, &ED047TC1, EPD_OPTIONS_DEFAULT);
   hl = epd_hl_init(EPD_BUILTIN_WAVEFORM);
   if (landscape_) {
     epd_set_rotation(EPD_ROT_LANDSCAPE);
