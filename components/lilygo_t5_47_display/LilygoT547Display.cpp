@@ -25,19 +25,19 @@ int LilygoT547Display::get_width_internal() { return 960; }
 int LilygoT547Display::get_height_internal() { return 540; }
 
 void LilygoT547Display::setup() {
-  ESP_LOGI(TAG, "Setup: clear_=%s, landscape_=%s, temperature_=%d",
-           this->clear_ ? "true" : "false",
-           this->landscape_ ? "true" : "false",
-           this->temperature_);
-
+  ESP_LOGI(TAG, "Step 1: before epd_init");
   epd_init(&epd_board_v7, &ED047TC1, EPD_OPTIONS_DEFAULT);
+  ESP_LOGI(TAG, "Step 2: before epd_hl_init");
   hl = epd_hl_init(EPD_BUILTIN_WAVEFORM);
+  ESP_LOGI(TAG, "Step 3: before epd_set_rotation");
   if (landscape_) {
     epd_set_rotation(EPD_ROT_LANDSCAPE);
   } else {
     epd_set_rotation(EPD_ROT_PORTRAIT);
   }
+  ESP_LOGI(TAG, "Step 4: before epd_hl_get_framebuffer");
   fb = epd_hl_get_framebuffer(&hl);
+  ESP_LOGI(TAG, "Step 5: setup complete");
 }
 
 void LilygoT547Display::update() {
