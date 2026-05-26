@@ -27,9 +27,6 @@ int LilygoT547Display::get_height_internal() { return 540; }
 void LilygoT547Display::setup() {
   ESP_LOGI(TAG, "Step 1: before epd_init");
   
-  // Geef de bestaande I2C bus door aan epdiy
-  i2c_master_bus_handle_t bus = epd_board_i2c_get_bus();  // NIET dit
-  
   // Gebruik EPD_OPTIONS_DEFAULT maar zonder I2C her-initialisatie
   epd_init(&epd_board_v7, &ED047TC1, EPD_OPTIONS_DEFAULT);
   
