@@ -31,15 +31,15 @@ void LilygoT547Display::setup() {
   epd_init(&epd_board_v7, &ED047TC1, EPD_OPTIONS_DEFAULT);
   
   ESP_LOGI(TAG, "Step 2: before epd_hl_init");
-  //hl = epd_hl_init(EPD_BUILTIN_WAVEFORM);
+  hl = epd_hl_init(EPD_BUILTIN_WAVEFORM);
   ESP_LOGI(TAG, "Step 3: before epd_set_rotation");
-  //if (landscape_) {
-  //  epd_set_rotation(EPD_ROT_LANDSCAPE);
-  //} else {
-  //  epd_set_rotation(EPD_ROT_PORTRAIT);
-  //}
+  if (landscape_) {
+    epd_set_rotation(EPD_ROT_LANDSCAPE);
+  } else {
+    epd_set_rotation(EPD_ROT_PORTRAIT);
+  }
   ESP_LOGI(TAG, "Step 4: before epd_hl_get_framebuffer");
-  //fb = epd_hl_get_framebuffer(&hl);
+  fb = epd_hl_get_framebuffer(&hl);
   ESP_LOGI(TAG, "Step 5: setup complete");
 }
 
