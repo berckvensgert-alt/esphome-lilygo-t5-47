@@ -28,7 +28,7 @@ void LilygoT547Display::setup() {
   ESP_LOGI(TAG, "Step 1: before epd_init");
   
   // Gebruik EPD_OPTIONS_DEFAULT maar zonder I2C her-initialisatie
-  //epd_init(&epd_board_v7, &ED047TC1, EPD_OPTIONS_DEFAULT);
+  epd_init(&epd_board_v7, &ED047TC1, EPD_OPTIONS_DEFAULT);
   
   ESP_LOGI(TAG, "Step 2: before epd_hl_init");
   //hl = epd_hl_init(EPD_BUILTIN_WAVEFORM);
