@@ -63,16 +63,16 @@ void LilygoT547Display::update() {
   //  this->full_clear_on_boot_executed_ = true;
   //  this->just_cleared_ = true;  // Use optimized mode for next update
     ESP_LOGI(TAG, "Full clear on boot completed");
-  }
+  //}
 
-  if (this->init_clear_executed_ == false && this->clear_ == true) {
-    ESP_LOGI(TAG, "Triggering initial clear from update()");
-    LilygoT547Display::full_clear();
-    this->init_clear_executed_ = true;
-  }
+  //if (this->init_clear_executed_ == false && this->clear_ == true) {
+  //  ESP_LOGI(TAG, "Triggering initial clear from update()");
+  //  LilygoT547Display::full_clear();
+  //  this->init_clear_executed_ = true;
+  //}
 
-  this->do_update_();
-  LilygoT547Display::flush_screen_changes();
+  //this->do_update_();
+  //LilygoT547Display::flush_screen_changes();
 }
 
 void LilygoT547Display::full_clear() {
