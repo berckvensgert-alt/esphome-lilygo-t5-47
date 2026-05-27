@@ -51,17 +51,17 @@ void LilygoT547Display::update() {
 
   // Full clear on boot - uses epd_fullclear() which properly syncs framebuffers
   // This should be done BEFORE the regular clear to establish a known baseline
-  if (this->full_clear_on_boot_executed_ == false && this->full_clear_on_boot_ == true) {
+  //if (this->full_clear_on_boot_executed_ == false && this->full_clear_on_boot_ == true) {
     ESP_LOGI(TAG, "Performing full clear on boot (syncs framebuffers with display)");
     // Disable watchdog for this task during long-running display operation
-    esp_task_wdt_delete(NULL);
-    epd_poweron();
-    epd_fullclear(&hl, this->temperature_);
-    delay(500);  // Allow display to settle
-    epd_poweroff();
-    esp_task_wdt_add(NULL);
-    this->full_clear_on_boot_executed_ = true;
-    this->just_cleared_ = true;  // Use optimized mode for next update
+  //  esp_task_wdt_delete(NULL);
+  //  epd_poweron();
+  //  epd_fullclear(&hl, this->temperature_);
+  //  delay(500);  // Allow display to settle
+  //  epd_poweroff();
+  //  esp_task_wdt_add(NULL);
+  //  this->full_clear_on_boot_executed_ = true;
+  //  this->just_cleared_ = true;  // Use optimized mode for next update
     ESP_LOGI(TAG, "Full clear on boot completed");
   }
 
