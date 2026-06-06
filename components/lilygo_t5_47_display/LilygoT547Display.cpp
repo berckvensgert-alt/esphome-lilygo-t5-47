@@ -133,11 +133,10 @@ void LilygoT547Display::on_shutdown() {
 
 void HOT LilygoT547Display::draw_absolute_pixel_internal(int x, int y, Color color) {
   if (color.red == 255 && color.green == 255 && color.blue == 255) {
-    epd_draw_pixel(x, y, 0, fb);
+    epd_draw_pixel(x, y, 255, fb);
   } else {
     int col = (0.2126 * color.red) + (0.7152 * color.green) + (0.0722 * color.blue);
-    int cl = 255 - col;
-    epd_draw_pixel(x, y, cl, fb);
+    epd_draw_pixel(x, y, col, fb);
   }
 }
 
