@@ -2,6 +2,7 @@
 #include "esphome/core/log.h"
 #include "esp_task_wdt.h"
 #include "driver/i2c_master.h"
+#include "epd_init_config.h"
 
 namespace esphome {
 namespace lilygo_t5_47_display {
@@ -27,21 +28,19 @@ int LilygoT547Display::get_height_internal() { return 540; }
 
 void LilygoT547Display::setup() {
   ESP_LOGI(TAG, "Step 1: before epd_init");
-  
-  // Geef de bestaande I2C bus door aan epdiy
-  EpdInitConfig init_config = EPD_INIT_CONFIG_DEFAULT;
-  
-  // Haal de bestaande I2C bus handle op
+
   i2c_master_bus_handle_t bus_handle;
-  i2c_master_get_bus_handle(0, &bus_handle);  // port 0
-  
-  EpdI2CConfig i2c_config = {
-      .bus_handle = bus_handle,
-  };
-  init_config.i2c = &i2c_config;
-  
-  epd_init(&epd_board_v7, &ED047TC1, &init_config);
-  
+  esp_err_t ret = i2c_master_get_bus_handle(0, &bus_handle);
+  if (ret == ESP_OK) {
+    ESP_LOGI(TAG, "Using existing I2C bus handle");
+    EpdI2cConfig i2c_config = { .bus_handle = bus_handle };
+    EpdInitConfig init_config = { .i2c = &i2c_config };
+    epd_init_with_config(&epd_board_v7, &ED047TC1, EPD_OPTIONS_DEFAULT, &init_config);
+  } else {
+    ESP_LOGI(TAG, "No existing I2C bus, creating new");
+    epd_init(&epd_board_v7, &ED047TC1, EPD_OPTIONS_DEFAULT);
+  }
+
   ESP_LOGI(TAG, "Step 2: before epd_hl_init");
   hl = epd_hl_init(EPD_BUILTIN_WAVEFORM);
   ESP_LOGI(TAG, "Step 3: before epd_set_rotation");
