@@ -33,6 +33,8 @@ class LilygoT547Display : public display::DisplayBuffer {
 
   int get_height_internal();
 
+  uint8_t* get_framebuffer() { return fb; }
+
   void setup() override;
 
   void update() override;
