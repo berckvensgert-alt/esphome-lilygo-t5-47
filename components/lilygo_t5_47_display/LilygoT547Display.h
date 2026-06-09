@@ -29,6 +29,8 @@ class LilygoT547Display : public display::DisplayBuffer {
   void set_temperature(uint32_t temperature);
   void set_full_clear_on_boot(bool full_clear_on_boot);
 
+  void set_just_cleared(bool val) { this->just_cleared_ = val; }
+
   int get_width_internal();
 
   int get_height_internal();
