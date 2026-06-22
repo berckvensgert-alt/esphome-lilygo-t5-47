@@ -29,12 +29,13 @@ CONFIG_SCHEMA = cv.Schema(
 async def to_code(config):
     var = cg.new_Pvariable(config[CONF_ID])
     await cg.register_component(var, config)
-
     conf = config[CONF_VOLTAGE]
     sens = await sensor.new_sensor(conf)
     cg.add(var.set_voltage_sensor(sens))
-
-    cg.add_library("https://github.com/vroland/epdiy.git", None)
+    # Deze regel verwijderen — epdiy wordt al door lilygo_t5_47_display
+    # binnengehaald via de juiste fork, een tweede (andere) library-URL
+    # hiervoor geeft een conflict:
+    # cg.add_library("https://github.com/vroland/epdiy.git", None)
     cg.add_build_flag("-DBOARD_HAS_PSRAM")
     cg.add_build_flag("-DCONFIG_EPD_DISPLAY_TYPE_ED047TC1")
     cg.add_build_flag("-DCONFIG_EPD_BOARD_REVISION_LILYGO_T5_47")
