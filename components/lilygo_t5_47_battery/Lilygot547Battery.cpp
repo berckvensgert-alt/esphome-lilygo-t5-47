@@ -6,50 +6,94 @@ namespace lilygo_t5_47_battery {
 
 static const char *const TAG = "lilygo_t5_47_battery";
 
-void Lilygot547Battery::setup() {
-  // Configure ADC1 using legacy API (compatible with epdiy)
-  adc1_config_width(ADC_WIDTH_BIT_12);
-  adc1_config_channel_atten(ADC1_CHANNEL_0, ADC_ATTEN_DB_11);
+// ADC1_CHANNEL_0 op ESP32-S3 = GPIO1
+static const adc_channel_t BATTERY_ADC_CHANNEL = ADC_CHANNEL_0;
+static const adc_atten_t BATTERY_ADC_ATTEN = ADC_ATTEN_DB_11;
 
-  // Calibrate ADC using eFuse vref if available
+void Lilygot547Battery::setup() {
+  // ADC1 unit aanmaken
+  adc_oneshot_unit_init_cfg_t init_config = {
+      .unit_id = ADC_UNIT_1,
+  };
+  esp_err_t err = adc_oneshot_new_unit(&init_config, &this->adc_handle_);
+  if (err != ESP_OK) {
+    ESP_LOGE(TAG, "Failed to create ADC unit: %d", err);
+    return;
+  }
+
+  // Kanaal configureren
+  adc_oneshot_chan_cfg_t chan_config = {
+      .atten = BATTERY_ADC_ATTEN,
+      .bitwidth = ADC_BITWIDTH_DEFAULT,
+  };
+  err = adc_oneshot_config_channel(this->adc_handle_, BATTERY_ADC_CHANNEL, &chan_config);
+  if (err != ESP_OK) {
+    ESP_LOGE(TAG, "Failed to configure ADC channel: %d", err);
+    return;
+  }
+
   this->calibrate_adc_();
+}
+
+void Lilygot547Battery::calibrate_adc_() {
+  adc_cali_curve_fitting_config_t cali_config = {
+      .unit_id = ADC_UNIT_1,
+      .chan = BATTERY_ADC_CHANNEL,
+      .atten = BATTERY_ADC_ATTEN,
+      .bitwidth = ADC_BITWIDTH_DEFAULT,
+  };
+  esp_err_t err = adc_cali_create_scheme_curve_fitting(&cali_config, &this->cali_handle_);
+  if (err == ESP_OK) {
+    this->calibrated_ = true;
+    ESP_LOGI(TAG, "ADC calibration (curve fitting) succeeded");
+  } else {
+    this->calibrated_ = false;
+    ESP_LOGW(TAG, "ADC calibration failed (%d), using raw conversion fallback", err);
+  }
 }
 
 void Lilygot547Battery::update() {
   epd_poweron();
-  // Wait for voltage to stabilize
   delay(100);
   this->update_battery_voltage_();
   epd_poweroff();
 }
 
 void Lilygot547Battery::update_battery_voltage_() {
-  // GPIO36 is ADC1_CHANNEL_0 - use legacy adc1_get_raw() to avoid conflict
-  // with epdiy's use of legacy ADC driver (Arduino's analogRead uses new driver)
-  int raw = adc1_get_raw(ADC1_CHANNEL_0);
-  if (raw < 0) {
-    ESP_LOGW(TAG, "Failed to read ADC");
+  if (this->adc_handle_ == nullptr) {
+    ESP_LOGW(TAG, "ADC not initialized");
     return;
   }
-  // Convert to voltage: 12-bit ADC, voltage divider (x2), calibrated vref
-  float battery_voltage = ((float) raw / 4095.0f) * 2.0f * 3.3f * ((float) this->vref_ / 1000.0f);
+
+  int raw = 0;
+  esp_err_t err = adc_oneshot_read(this->adc_handle_, BATTERY_ADC_CHANNEL, &raw);
+  if (err != ESP_OK) {
+    ESP_LOGW(TAG, "Failed to read ADC: %d", err);
+    return;
+  }
+
+  float battery_voltage;
+
+  if (this->calibrated_) {
+    int voltage_mv = 0;
+    err = adc_cali_raw_to_voltage(this->cali_handle_, raw, &voltage_mv);
+    if (err == ESP_OK) {
+      // x2 voor spanningsdeler
+      battery_voltage = (voltage_mv / 1000.0f) * 2.0f;
+    } else {
+      ESP_LOGW(TAG, "Calibrated conversion failed (%d), falling back to raw", err);
+      battery_voltage = ((float) raw / 4095.0f) * 2.0f * 3.3f;
+    }
+  } else {
+    // Fallback zonder calibratie
+    battery_voltage = ((float) raw / 4095.0f) * 2.0f * 3.3f;
+  }
 
   if (this->voltage != nullptr) {
     this->voltage->publish_state(battery_voltage);
   }
-}
 
-void Lilygot547Battery::calibrate_adc_() {
-  // Use eFuse calibration if available
-  esp_adc_cal_characteristics_t adc_chars;
-  esp_adc_cal_value_t val_type =
-      esp_adc_cal_characterize(ADC_UNIT_1, ADC_ATTEN_DB_11, ADC_WIDTH_BIT_12, 1100, &adc_chars);
-  if (val_type == ESP_ADC_CAL_VAL_EFUSE_VREF) {
-    this->vref_ = adc_chars.vref;
-    ESP_LOGI(TAG, "Using eFuse Vref: %d mV", this->vref_);
-  } else {
-    ESP_LOGW(TAG, "Using default Vref: %d mV", this->vref_);
-  }
+  ESP_LOGD(TAG, "Battery raw=%d, voltage=%.2f V", raw, battery_voltage);
 }
 
 }  // namespace lilygo_t5_47_battery
