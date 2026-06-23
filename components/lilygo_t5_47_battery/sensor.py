@@ -8,7 +8,6 @@ from esphome.const import (
     DEVICE_CLASS_VOLTAGE,
 )
 
-
 Lilygot547battery_ns = cg.esphome_ns.namespace("lilygo_t5_47_battery")
 Lilygot547battery = Lilygot547battery_ns.class_(
     "Lilygot547Battery", cg.PollingComponent
@@ -32,10 +31,15 @@ async def to_code(config):
     conf = config[CONF_VOLTAGE]
     sens = await sensor.new_sensor(conf)
     cg.add(var.set_voltage_sensor(sens))
-    # Deze regel verwijderen — epdiy wordt al door lilygo_t5_47_display
-    # binnengehaald via de juiste fork, een tweede (andere) library-URL
-    # hiervoor geeft een conflict:
-    # cg.add_library("https://github.com/vroland/epdiy.git", None)
+
     cg.add_build_flag("-DBOARD_HAS_PSRAM")
     cg.add_build_flag("-DCONFIG_EPD_DISPLAY_TYPE_ED047TC1")
-    cg.add_build_flag("-DCONFIG_EPD_BOARD_REVISION_LILYGO_T5_47")
+
+    # Registreer de esp_adc IDF-component zodat de linker de
+    # adc_oneshot_* en adc_cali_* implementaties vindt.
+    if cg.CORE.using_esp_idf:
+        from esphome.components.esp32 import add_idf_component
+        add_idf_component(
+            name="espressif/esp_adc",
+            ref="^1.1.0",
+        )
