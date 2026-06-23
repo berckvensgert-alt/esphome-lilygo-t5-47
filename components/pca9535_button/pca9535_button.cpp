@@ -20,13 +20,18 @@ void PCA9535Button::update() {
     return;
   }
 
+  // Tijdelijk: log alle 8 bits van Port 1 individueel, zodat we zien
+  // welk bit verandert wanneer de knop wordt ingedrukt.
+  ESP_LOGD(TAG, "Port1 raw=0x%02X | bit0=%d bit1=%d bit2=%d bit3=%d bit4=%d bit5=%d bit6=%d bit7=%d",
+           reg_val,
+           (reg_val >> 0) & 1, (reg_val >> 1) & 1, (reg_val >> 2) & 1, (reg_val >> 3) & 1,
+           (reg_val >> 4) & 1, (reg_val >> 5) & 1, (reg_val >> 6) & 1, (reg_val >> 7) & 1);
+
   bool pressed = !((reg_val >> BUTTON_BIT) & 0x01);
 
   if (this->binary_sensor_ != nullptr) {
     this->binary_sensor_->publish_state(pressed);
   }
-
-  ESP_LOGD(TAG, "Input Port 1 raw=0x%02X, knop ingedrukt=%s", reg_val, pressed ? "JA" : "NEE");
 }
 
 }  // namespace pca9535_button
