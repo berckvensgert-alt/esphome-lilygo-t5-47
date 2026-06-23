@@ -6,18 +6,19 @@ namespace lilygo_t5_47_battery {
 
 static const char *const TAG = "lilygo_t5_47_battery";
 
-// ADC1_CHANNEL_0 op ESP32-S3 = GPIO1
+// GPIO1 == ADC1_CHANNEL_0 op ESP32-S3.
 static const adc_channel_t BATTERY_ADC_CHANNEL = ADC_CHANNEL_0;
+static const adc_unit_t BATTERY_ADC_UNIT = ADC_UNIT_1;
 static const adc_atten_t BATTERY_ADC_ATTEN = ADC_ATTEN_DB_11;
 
 void Lilygot547Battery::setup() {
   // ADC1 unit aanmaken
   adc_oneshot_unit_init_cfg_t init_config = {
-      .unit_id = ADC_UNIT_1,
+      .unit_id = BATTERY_ADC_UNIT,
   };
   esp_err_t err = adc_oneshot_new_unit(&init_config, &this->adc_handle_);
   if (err != ESP_OK) {
-    ESP_LOGE(TAG, "Failed to create ADC unit: %d", err);
+    ESP_LOGE(TAG, "Kon ADC unit niet aanmaken: %d", err);
     return;
   }
 
@@ -28,7 +29,7 @@ void Lilygot547Battery::setup() {
   };
   err = adc_oneshot_config_channel(this->adc_handle_, BATTERY_ADC_CHANNEL, &chan_config);
   if (err != ESP_OK) {
-    ESP_LOGE(TAG, "Failed to configure ADC channel: %d", err);
+    ESP_LOGE(TAG, "Kon ADC kanaal niet configureren: %d", err);
     return;
   }
 
@@ -37,7 +38,7 @@ void Lilygot547Battery::setup() {
 
 void Lilygot547Battery::calibrate_adc_() {
   adc_cali_curve_fitting_config_t cali_config = {
-      .unit_id = ADC_UNIT_1,
+      .unit_id = BATTERY_ADC_UNIT,
       .chan = BATTERY_ADC_CHANNEL,
       .atten = BATTERY_ADC_ATTEN,
       .bitwidth = ADC_BITWIDTH_DEFAULT,
@@ -45,10 +46,10 @@ void Lilygot547Battery::calibrate_adc_() {
   esp_err_t err = adc_cali_create_scheme_curve_fitting(&cali_config, &this->cali_handle_);
   if (err == ESP_OK) {
     this->calibrated_ = true;
-    ESP_LOGI(TAG, "ADC calibration (curve fitting) succeeded");
+    ESP_LOGI(TAG, "ADC calibratie (curve fitting) geslaagd");
   } else {
     this->calibrated_ = false;
-    ESP_LOGW(TAG, "ADC calibration failed (%d), using raw conversion fallback", err);
+    ESP_LOGW(TAG, "ADC calibratie niet beschikbaar, gebruik ruwe conversie (err=%d)", err);
   }
 }
 
@@ -61,14 +62,14 @@ void Lilygot547Battery::update() {
 
 void Lilygot547Battery::update_battery_voltage_() {
   if (this->adc_handle_ == nullptr) {
-    ESP_LOGW(TAG, "ADC not initialized");
+    ESP_LOGW(TAG, "ADC niet geïnitialiseerd");
     return;
   }
 
   int raw = 0;
   esp_err_t err = adc_oneshot_read(this->adc_handle_, BATTERY_ADC_CHANNEL, &raw);
   if (err != ESP_OK) {
-    ESP_LOGW(TAG, "Failed to read ADC: %d", err);
+    ESP_LOGW(TAG, "ADC lezen mislukt: %d", err);
     return;
   }
 
@@ -77,15 +78,14 @@ void Lilygot547Battery::update_battery_voltage_() {
   if (this->calibrated_) {
     int voltage_mv = 0;
     err = adc_cali_raw_to_voltage(this->cali_handle_, raw, &voltage_mv);
-    if (err == ESP_OK) {
-      // x2 voor spanningsdeler
-      battery_voltage = (voltage_mv / 1000.0f) * 2.0f;
-    } else {
-      ESP_LOGW(TAG, "Calibrated conversion failed (%d), falling back to raw", err);
-      battery_voltage = ((float) raw / 4095.0f) * 2.0f * 3.3f;
+    if (err != ESP_OK) {
+      ESP_LOGW(TAG, "ADC calibratie-conversie mislukt: %d", err);
+      return;
     }
+    // Spanningsdeler x2 (zelfde aanname als origineel)
+    battery_voltage = (voltage_mv / 1000.0f) * 2.0f;
   } else {
-    // Fallback zonder calibratie
+    // Fallback zonder calibratie: ruwe 12-bit conversie met default Vref
     battery_voltage = ((float) raw / 4095.0f) * 2.0f * 3.3f;
   }
 
@@ -93,7 +93,7 @@ void Lilygot547Battery::update_battery_voltage_() {
     this->voltage->publish_state(battery_voltage);
   }
 
-  ESP_LOGD(TAG, "Battery raw=%d, voltage=%.2f V", raw, battery_voltage);
+  ESP_LOGD(TAG, "Batterij ADC raw=%d, spanning=%.2fV", raw, battery_voltage);
 }
 
 }  // namespace lilygo_t5_47_battery
