@@ -6,7 +6,6 @@ namespace pca9535_button {
 
 static const char *const TAG = "pca9535_button";
 
-// PCA9535 Input Port 1 register, bit 2 = IO1.2 (de rand-knop)
 static const uint8_t REG_INPUT_PORT1 = 0x01;
 static const uint8_t BUTTON_BIT = 2;
 
@@ -21,11 +20,11 @@ void PCA9535Button::update() {
     return;
   }
 
-  // De knop is typisch actief-laag (pull-up, ingedrukt = 0).
-  // Als de knop active-high blijkt te zijn, verwijder de '!' hieronder.
   bool pressed = !((reg_val >> BUTTON_BIT) & 0x01);
 
-  this->publish_state(pressed);
+  if (this->binary_sensor_ != nullptr) {
+    this->binary_sensor_->publish_state(pressed);
+  }
 
   ESP_LOGD(TAG, "Input Port 1 raw=0x%02X, knop ingedrukt=%s", reg_val, pressed ? "JA" : "NEE");
 }
