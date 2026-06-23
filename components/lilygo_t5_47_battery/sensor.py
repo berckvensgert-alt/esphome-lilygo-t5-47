@@ -24,7 +24,6 @@ CONFIG_SCHEMA = cv.Schema(
     }
 ).extend(cv.polling_component_schema("5s"))
 
-
 async def to_code(config):
     var = cg.new_Pvariable(config[CONF_ID])
     await cg.register_component(var, config)
@@ -35,11 +34,7 @@ async def to_code(config):
     cg.add_build_flag("-DBOARD_HAS_PSRAM")
     cg.add_build_flag("-DCONFIG_EPD_DISPLAY_TYPE_ED047TC1")
 
-    # Registreer de esp_adc IDF-component zodat de linker de
-    # adc_oneshot_* en adc_cali_* implementaties vindt.
     if cg.CORE.using_esp_idf:
+        cg.add_idf_sdkconfig_option("CONFIG_ADC_ONESHOT_CTRL_FUNC_IN_IRAM", True)
         from esphome.components.esp32 import add_idf_component
-        add_idf_component(
-            name="espressif/esp_adc",
-            ref="^1.1.0",
-        )
+        add_idf_component(name="esp_adc")
