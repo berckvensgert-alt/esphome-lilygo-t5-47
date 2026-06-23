@@ -35,7 +35,3 @@ async def to_code(config):
 
     cg.add_build_flag("-DBOARD_HAS_PSRAM")
     cg.add_build_flag("-DCONFIG_EPD_DISPLAY_TYPE_ED047TC1")
-
-    if CORE.using_esp_idf:
-        from esphome.components.esp32 import add_idf_component
-        add_idf_component(name="esp_adc")
