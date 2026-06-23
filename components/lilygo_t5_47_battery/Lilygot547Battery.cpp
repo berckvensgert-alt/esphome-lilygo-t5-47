@@ -1,43 +1,47 @@
-#include "Lilygot547Battery.h"
-#include "esphome/core/log.h"
+import esphome.codegen as cg
+import esphome.config_validation as cv
+from esphome.core import CORE
+from esphome.components import sensor
+from esphome.const import (
+    CONF_ID,
+    CONF_VOLTAGE,
+    UNIT_VOLT,
+    DEVICE_CLASS_VOLTAGE,
+)
 
-namespace esphome {
-namespace lilygo_t5_47_battery {
+Lilygot547battery_ns = cg.esphome_ns.namespace("lilygo_t5_47_battery")
+Lilygot547battery = Lilygot547battery_ns.class_(
+    "Lilygot547Battery", cg.PollingComponent
+)
 
-static const char *const TAG = "lilygo_t5_47_battery";
+CONFIG_SCHEMA = cv.Schema(
+    {
+        cv.GenerateID(): cv.declare_id(Lilygot547battery),
+        cv.Optional(CONF_VOLTAGE): sensor.sensor_schema(
+            unit_of_measurement=UNIT_VOLT,
+            accuracy_decimals=2,
+            device_class=DEVICE_CLASS_VOLTAGE,
+        ),
+    }
+).extend(cv.polling_component_schema("5s"))
 
-void Lilygot547Battery::setup() {
-  adc1_config_width(ADC_WIDTH_BIT_12);
-  adc1_config_channel_atten(ADC1_CHANNEL_0, ADC_ATTEN_DB_11);
-}
 
-void Lilygot547Battery::update() {
-  epd_poweron();
-  delay(100);
-  this->update_battery_voltage_();
-  epd_poweroff();
-}
+async def to_code(config):
+    var = cg.new_Pvariable(config[CONF_ID])
+    await cg.register_component(var, config)
+    conf = config[CONF_VOLTAGE]
+    sens = await sensor.new_sensor(conf)
+    cg.add(var.set_voltage_sensor(sens))
 
-void Lilygot547Battery::update_battery_voltage_() {
-  int raw = adc1_get_raw(ADC1_CHANNEL_0);
-  if (raw < 0) {
-    ESP_LOGW(TAG, "Failed to read ADC");
-    return;
-  }
+    cg.add_build_flag("-DBOARD_HAS_PSRAM")
+    cg.add_build_flag("-DCONFIG_EPD_DISPLAY_TYPE_ED047TC1")
 
-  // Ongecalibreerde conversie: 12-bit ADC, spanningsdeler x2, vaste
-  // Vref-aanname van 1100mV (typische ESP32 default zonder eFuse-calibratie).
-  // Minder nauwkeurig dan curve-fitting calibratie, maar voldoende voor
-  // een indicatieve batterijspanning.
-  const float vref_mv = 1100.0f;
-  float battery_voltage = ((float) raw / 4095.0f) * 2.0f * 3.3f * (vref_mv / 1000.0f);
-
-  if (this->voltage != nullptr) {
-    this->voltage->publish_state(battery_voltage);
-  }
-
-  ESP_LOGD(TAG, "Batterij ADC raw=%d, spanning=%.2fV", raw, battery_voltage);
-}
-
-}  // namespace lilygo_t5_47_battery
-}  // namespace esphome
+    # esp_adc wordt sinds ESPHome 2026.2.0 standaard uitgesloten als
+    # geen ingebouwd component het gebruikt. Expliciet re-enablen:
+    if CORE.is_esp32:
+        try:
+            from esphome.components.esp32 import include_builtin_idf_component
+            include_builtin_idf_component("esp_adc")
+        except ImportError:
+            # ESPHome < 2026.2.0 - esp_adc wordt altijd meegebouwd
+            pass
