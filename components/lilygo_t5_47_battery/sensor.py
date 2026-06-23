@@ -35,5 +35,10 @@ async def to_code(config):
 
     cg.add_build_flag("-DBOARD_HAS_PSRAM")
     cg.add_build_flag("-DCONFIG_EPD_DISPLAY_TYPE_ED047TC1")
-    # lib_deps regel verwijderd — espressif/esp_adc bestaat niet als
-    # los registry-package, enkel als ingebouwde IDF-component.
+
+    if CORE.is_esp32:
+        try:
+            from esphome.components.esp32 import include_builtin_idf_component
+            include_builtin_idf_component("esp_adc")
+        except ImportError:
+            pass
