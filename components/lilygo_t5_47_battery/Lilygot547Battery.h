@@ -2,9 +2,13 @@
 #include "esphome/core/component.h"
 #include "esphome/components/sensor/sensor.h"
 #include "esphome/core/hal.h"
+
+// Moderne ESP-IDF v5 ADC API (vervangt de legacy driver/adc.h + esp_adc_cal.h,
+// die in nieuwere IDF-versies niet meer beschikbaar zijn).
 #include "esp_adc/adc_oneshot.h"
 #include "esp_adc/adc_cali.h"
 #include "esp_adc/adc_cali_scheme.h"
+
 #include "epdiy.h"
 
 namespace esphome {
@@ -13,6 +17,7 @@ namespace lilygo_t5_47_battery {
 class Lilygot547Battery : public PollingComponent {
  public:
   sensor::Sensor *voltage{nullptr};
+
   void setup() override;
   void update() override;
   void set_voltage_sensor(sensor::Sensor *voltage_sensor) { voltage = voltage_sensor; }
