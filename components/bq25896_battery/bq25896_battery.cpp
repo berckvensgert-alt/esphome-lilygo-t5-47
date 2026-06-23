@@ -18,23 +18,27 @@ void BQ25896Battery::setup() {
   // te verstoren.
   uint8_t reg02_val = 0;
   if (this->read_byte(REG02_ADC_CTRL, &reg02_val)) {
+    ESP_LOGD(TAG, "REG02 bij setup (voor write): 0x%02X", reg02_val);
     reg02_val |= 0xC0;  // bit7 CONV_START=1, bit6 CONV_RATE=1
     this->write_byte(REG02_ADC_CTRL, reg02_val);
-    ESP_LOGD(TAG, "ADC-conversie geactiveerd (REG02=0x%02X)", reg02_val);
+    ESP_LOGD(TAG, "ADC-conversie geactiveerd (REG02 na write): 0x%02X", reg02_val);
   } else {
     ESP_LOGW(TAG, "Kon REG02 niet lezen om ADC te activeren");
   }
 }
 
 void BQ25896Battery::update() {
-  // Elke update een nieuwe conversie triggeren (CONV_START is
-  // self-clearing na conversie, dus opnieuw zetten als CONV_RATE
-  // uitstaat of als extra zekerheid).
+  // Elke update een nieuwe conversie triggeren.
   uint8_t reg02_val = 0;
   if (this->read_byte(REG02_ADC_CTRL, &reg02_val)) {
+    ESP_LOGD(TAG, "REG02 voor write: 0x%02X", reg02_val);
     reg02_val |= 0x80;  // CONV_START
     this->write_byte(REG02_ADC_CTRL, reg02_val);
   }
+
+  uint8_t reg0e_raw = 0;
+  this->read_byte(REG0E_BATV, &reg0e_raw);
+  ESP_LOGD(TAG, "REG0E raw: 0x%02X", reg0e_raw);
 
   float voltage = this->read_battery_voltage_();
   if (voltage <= 0.0f) {
@@ -65,14 +69,19 @@ float BQ25896Battery::read_battery_voltage_() {
     return -1.0f;
   }
 
+  // Bit 7 = THERM_STAT (negeren), bits 6-0 = BATV
   uint8_t batv_code = reg_val & 0x7F;
+
+  // VBAT = 2304mV offset + batv_code * 20mV/stap
   float voltage_mv = 2304.0f + (batv_code * 20.0f);
   return voltage_mv / 1000.0f;
 }
 
 float BQ25896Battery::voltage_to_percentage_(float voltage) {
+  // Eenvoudige lineaire LiPo-ontlaadcurve-benadering (3.0V = 0%, 4.2V = 100%)
   const float v_min = 3.0f;
   const float v_max = 4.2f;
+
   float pct = ((voltage - v_min) / (v_max - v_min)) * 100.0f;
   if (pct > 100.0f) pct = 100.0f;
   if (pct < 0.0f) pct = 0.0f;
@@ -85,7 +94,9 @@ std::string BQ25896Battery::read_charge_status_() {
     return "Onbekend";
   }
 
+  // Bits 4-3 = CHRG_STAT
   uint8_t chrg_stat = (reg_val >> 3) & 0x03;
+  // Bit 2 = PG_STAT (power good / VBUS aanwezig)
   bool power_good = (reg_val >> 2) & 0x01;
 
   if (!power_good) {
@@ -93,11 +104,16 @@ std::string BQ25896Battery::read_charge_status_() {
   }
 
   switch (chrg_stat) {
-    case 0: return "Niet aan het laden";
-    case 1: return "Pre-charge";
-    case 2: return "Snel laden";
-    case 3: return "Volledig opgeladen";
-    default: return "Onbekend";
+    case 0:
+      return "Niet aan het laden";
+    case 1:
+      return "Pre-charge";
+    case 2:
+      return "Snel laden";
+    case 3:
+      return "Volledig opgeladen";
+    default:
+      return "Onbekend";
   }
 }
 
