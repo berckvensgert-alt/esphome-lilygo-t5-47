@@ -1,47 +1,95 @@
-import esphome.codegen as cg
-import esphome.config_validation as cv
-from esphome.core import CORE
-from esphome.components import sensor
-from esphome.const import (
-    CONF_ID,
-    CONF_VOLTAGE,
-    UNIT_VOLT,
-    DEVICE_CLASS_VOLTAGE,
-)
+#include "Lilygot547Battery.h"
+#include "esphome/core/log.h"
 
-Lilygot547battery_ns = cg.esphome_ns.namespace("lilygo_t5_47_battery")
-Lilygot547battery = Lilygot547battery_ns.class_(
-    "Lilygot547Battery", cg.PollingComponent
-)
+namespace esphome {
+namespace lilygo_t5_47_battery {
 
-CONFIG_SCHEMA = cv.Schema(
-    {
-        cv.GenerateID(): cv.declare_id(Lilygot547battery),
-        cv.Optional(CONF_VOLTAGE): sensor.sensor_schema(
-            unit_of_measurement=UNIT_VOLT,
-            accuracy_decimals=2,
-            device_class=DEVICE_CLASS_VOLTAGE,
-        ),
+static const char *const TAG = "lilygo_t5_47_battery";
+
+static const adc_channel_t BATTERY_ADC_CHANNEL = ADC_CHANNEL_0;
+static const adc_unit_t BATTERY_ADC_UNIT = ADC_UNIT_1;
+static const adc_atten_t BATTERY_ADC_ATTEN = ADC_ATTEN_DB_11;
+
+void Lilygot547Battery::setup() {
+  adc_oneshot_unit_init_cfg_t init_config = {
+      .unit_id = BATTERY_ADC_UNIT,
+  };
+  esp_err_t err = adc_oneshot_new_unit(&init_config, &this->adc_handle_);
+  if (err != ESP_OK) {
+    ESP_LOGE(TAG, "Kon ADC unit niet aanmaken: %d", err);
+    return;
+  }
+
+  adc_oneshot_chan_cfg_t chan_config = {
+      .atten = BATTERY_ADC_ATTEN,
+      .bitwidth = ADC_BITWIDTH_DEFAULT,
+  };
+  err = adc_oneshot_config_channel(this->adc_handle_, BATTERY_ADC_CHANNEL, &chan_config);
+  if (err != ESP_OK) {
+    ESP_LOGE(TAG, "Kon ADC kanaal niet configureren: %d", err);
+    return;
+  }
+
+  this->calibrate_adc_();
+}
+
+void Lilygot547Battery::calibrate_adc_() {
+  adc_cali_curve_fitting_config_t cali_config = {
+      .unit_id = BATTERY_ADC_UNIT,
+      .chan = BATTERY_ADC_CHANNEL,
+      .atten = BATTERY_ADC_ATTEN,
+      .bitwidth = ADC_BITWIDTH_DEFAULT,
+  };
+  esp_err_t err = adc_cali_create_scheme_curve_fitting(&cali_config, &this->cali_handle_);
+  if (err == ESP_OK) {
+    this->calibrated_ = true;
+    ESP_LOGI(TAG, "ADC calibratie (curve fitting) geslaagd");
+  } else {
+    this->calibrated_ = false;
+    ESP_LOGW(TAG, "ADC calibratie niet beschikbaar, gebruik ruwe conversie (err=%d)", err);
+  }
+}
+
+void Lilygot547Battery::update() {
+  epd_poweron();
+  delay(100);
+  this->update_battery_voltage_();
+  epd_poweroff();
+}
+
+void Lilygot547Battery::update_battery_voltage_() {
+  if (this->adc_handle_ == nullptr) {
+    ESP_LOGW(TAG, "ADC niet geïnitialiseerd");
+    return;
+  }
+
+  int raw = 0;
+  esp_err_t err = adc_oneshot_read(this->adc_handle_, BATTERY_ADC_CHANNEL, &raw);
+  if (err != ESP_OK) {
+    ESP_LOGW(TAG, "ADC lezen mislukt: %d", err);
+    return;
+  }
+
+  float battery_voltage;
+
+  if (this->calibrated_) {
+    int voltage_mv = 0;
+    err = adc_cali_raw_to_voltage(this->cali_handle_, raw, &voltage_mv);
+    if (err != ESP_OK) {
+      ESP_LOGW(TAG, "ADC calibratie-conversie mislukt: %d", err);
+      return;
     }
-).extend(cv.polling_component_schema("5s"))
+    battery_voltage = (voltage_mv / 1000.0f) * 2.0f;
+  } else {
+    battery_voltage = ((float) raw / 4095.0f) * 2.0f * 3.3f;
+  }
 
+  if (this->voltage != nullptr) {
+    this->voltage->publish_state(battery_voltage);
+  }
 
-async def to_code(config):
-    var = cg.new_Pvariable(config[CONF_ID])
-    await cg.register_component(var, config)
-    conf = config[CONF_VOLTAGE]
-    sens = await sensor.new_sensor(conf)
-    cg.add(var.set_voltage_sensor(sens))
+  ESP_LOGD(TAG, "Batterij ADC raw=%d, spanning=%.2fV", raw, battery_voltage);
+}
 
-    cg.add_build_flag("-DBOARD_HAS_PSRAM")
-    cg.add_build_flag("-DCONFIG_EPD_DISPLAY_TYPE_ED047TC1")
-
-    # esp_adc wordt sinds ESPHome 2026.2.0 standaard uitgesloten als
-    # geen ingebouwd component het gebruikt. Expliciet re-enablen:
-    if CORE.is_esp32:
-        try:
-            from esphome.components.esp32 import include_builtin_idf_component
-            include_builtin_idf_component("esp_adc")
-        except ImportError:
-            # ESPHome < 2026.2.0 - esp_adc wordt altijd meegebouwd
-            pass
+}  // namespace lilygo_t5_47_battery
+}  // namespace esphome
