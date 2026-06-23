@@ -3,10 +3,10 @@
 #include "esphome/components/sensor/sensor.h"
 #include "esphome/core/hal.h"
 
-// Legacy ADC driver (compatibel met epdiy, dat dezelfde driver gebruikt).
-// We vermijden esp_adc_cal.h (verwijderd in nieuwere IDF) en doen een
-// eenvoudige, ongecalibreerde conversie met een vaste Vref-aanname.
-#include <driver/adc.h>
+#include "esp_adc/adc_oneshot.h"
+#include "esp_adc/adc_cali.h"
+#include "esp_adc/adc_cali_scheme.h"
+
 #include "epdiy.h"
 
 namespace esphome {
@@ -21,7 +21,12 @@ class Lilygot547Battery : public PollingComponent {
   void set_voltage_sensor(sensor::Sensor *voltage_sensor) { voltage = voltage_sensor; }
 
  protected:
+  adc_oneshot_unit_handle_t adc_handle_{nullptr};
+  adc_cali_handle_t cali_handle_{nullptr};
+  bool calibrated_{false};
+
   void update_battery_voltage_();
+  void calibrate_adc_();
 };
 
 }  // namespace lilygo_t5_47_battery
